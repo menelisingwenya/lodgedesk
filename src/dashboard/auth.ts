@@ -1,63 +1,104 @@
-// PLACEHOLDER, replace with Supabase Auth.
-//
-// Demo-only staff sign-in. Any non-empty email and password are accepted while
-// the app runs in development (`import.meta.env.DEV`). In a production build
-// the guard below rejects every attempt, so this placeholder can never
-// authenticate a real user. Passwords are never stored, persisted or logged.
+import { supabase } from "../lib/supabase";
 
 export interface StaffUser {
   id: string;
-  email: string;
   displayName: string;
   role: string;
-  initials: string;
+  email?: string;
+  initials?: string;
 }
 
-const DEMO_USER: Omit<StaffUser, "email"> = {
-  id: "demo-staff",
-  displayName: "Demo Staff",
-  role: "Front desk",
-  initials: "DS",
-};
-
-const listeners = new Set<(user: StaffUser | null) => void>();
 let currentUser: StaffUser | null = null;
 
-function emit() {
-  for (const listener of listeners) listener(currentUser);
-}
-
 export async function signIn(email: string, password: string): Promise<StaffUser> {
-  if (!import.meta.env.DEV) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
+
+  if (error || !data.user) {
     throw new Error("Incorrect email or password.");
   }
 
-  // Keep the loading state visible long enough to be perceptible.
-  await new Promise((resolve) => setTimeout(resolve, 600));
+  const { data: profile, error: profileError } = await supabase
+    .from("staff_profiles")
+    .select("display_name, role, is_active")
+    .eq("user_id", data.user.id)
+    .maybeSingle();
 
-  if (!email.trim() || !password.trim()) {
-    throw new Error("Incorrect email or password.");
+  if (profileError || !profile || !profile.is_active) {
+    currentUser = null;
+    await supabase.auth.signOut();
+    throw new Error("This account does not have staff access.");
   }
 
-  currentUser = { ...DEMO_USER, email: email.trim() };
-  emit();
-  return currentUser;
-}
+  currentUser = {
+    id: data.user.id,
+    displayName: profile.display_name,
+    role: profile.role,
+  };
 
-export function signOut(): void {
-  currentUser = null;
-  emit();
+  return {
+    id: currentUser.id,
+    displayName: currentUser.displayName,
+    role: currentUser.role,
+  };
 }
 
 export function getCurrentUser(): StaffUser | null {
-  if (!import.meta.env.DEV) return null;
-  return currentUser;
+  if (!currentUser) return null;
+  return {
+    id: currentUser.id,
+    displayName: currentUser.displayName,
+    role: currentUser.role,
+  };
+}
+
+export async function signOut(): Promise<void> {
+  currentUser = null;
+  await supabase.auth.signOut();
 }
 
 export function onAuthChange(callback: (user: StaffUser | null) => void): () => void {
-  listeners.add(callback);
-  callback(getCurrentUser());
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    setTimeout(async () => {
+      if (!session?.user) {
+        currentUser = null;
+        callback(null);
+        return;
+      }
+
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from("staff_profiles")
+          .select("display_name, role, is_active")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        if (profileError || !profile || !profile.is_active) {
+          currentUser = null;
+          await supabase.auth.signOut();
+          callback(null);
+          return;
+        }
+
+        currentUser = {
+          id: session.user.id,
+          displayName: profile.display_name,
+          role: profile.role,
+        };
+
+        callback(getCurrentUser());
+      } catch {
+        currentUser = null;
+        callback(null);
+      }
+    }, 0);
+  });
+
   return () => {
-    listeners.delete(callback);
+    subscription.unsubscribe();
   };
 }

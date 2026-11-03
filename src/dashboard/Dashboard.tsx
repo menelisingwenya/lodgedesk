@@ -210,7 +210,7 @@ function DashboardShell({ user }: { user: StaffUser }) {
 
           <div className="ld-pill">
             <span className="ld-live-dot" aria-hidden="true" />
-            <span className="ld-hide-sm">Bulawayo · Front desk</span>
+            <span className="ld-hide-sm">Harris Lodges · Staff</span>
             <span className="ld-pill-sep" aria-hidden="true" />
             <button type="button" onClick={openInbox}>
               {unread} unread

@@ -41,6 +41,16 @@ export default function Sidebar({
 }: SidebarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const recent = enquiries.filter((e) => matchesQuery(e, query)).slice(0, 14);
+  const roleLabel = user.role.toLowerCase() === "owner" ? "Owner" : "Manager";
+  const initials =
+    user.initials ||
+    user.displayName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") ||
+    "U";
 
   return (
     <aside className="ld-sidebar" aria-label="LodgeDesk navigation">
@@ -139,11 +149,11 @@ export default function Sidebar({
             aria-expanded={menuOpen}
             aria-haspopup="menu"
           >
-            <span className="ld-user-avatar">{user.initials}</span>
+            <span className="ld-user-avatar">{initials}</span>
             <span className="ld-user-meta">
               <b>{user.displayName}</b>
               <span>
-                · {user.role}
+                · {roleLabel}
                 <Icon name="chevron-down" size={12} />
               </span>
             </span>
@@ -154,7 +164,7 @@ export default function Sidebar({
 
           {menuOpen && (
             <div className="ld-user-menu" role="menu">
-              <p className="ld-user-menu-email">{user.email}</p>
+              {user.email ? <p className="ld-user-menu-email">{user.email}</p> : null}
               <button
                 type="button"
                 role="menuitem"

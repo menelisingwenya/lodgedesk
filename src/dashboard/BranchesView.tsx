@@ -48,7 +48,7 @@ export default function BranchesView({ onNotice }: { onNotice: (message: string)
       </div>
 
       <p className="ld-ask-hint" style={{ textAlign: "left", marginTop: 16 }}>
-        Occupancy is pulled from the front-desk system every 15 minutes.
+        Occupancy is pulled from the property system every 15 minutes.
       </p>
     </div>
   );

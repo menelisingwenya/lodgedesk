@@ -109,7 +109,7 @@ export default function Overview({
             <Icon name="users" size={13} />
           </div>
           <div className="ld-stat-value">{handoffCount}</div>
-          <p className="ld-stat-note">Waiting on the front desk</p>
+          <p className="ld-stat-note">Waiting on staff</p>
         </article>
 
         <article className="ld-stat">

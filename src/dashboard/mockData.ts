@@ -63,7 +63,7 @@ export const ENQUIRIES: Enquiry[] = [
     unread: true,
     preview: "The Executive Deluxe for our anniversary — flowers and a late check-out?",
     summary:
-      "Anniversary stay in an Executive Deluxe room at Park 2, 28–30 November. Rate is unconfirmed and the guest has asked for flowers plus a late check-out. Handed to the front desk to price and call back.",
+      "Anniversary stay in an Executive Deluxe room at Park 2, 28–30 November. Rate is unconfirmed and the guest has asked for flowers plus a late check-out. Handed to staff to price and call back.",
     messages: [
       {
         id: "m1",
@@ -104,7 +104,7 @@ export const ENQUIRIES: Enquiry[] = [
     unread: false,
     preview: "What is the rate for an Executive room at Prime Harris on 20 November?",
     summary:
-      "One-night Executive booking at Prime Harris on 20 November at $80. The room is held until Friday while the guest waits for office approval; front desk has replied.",
+      "One-night Executive booking at Prime Harris on 20 November at $80. The room is held until Friday while the guest waits for office approval; staff has replied.",
     messages: [
       {
         id: "m1",
@@ -324,7 +324,7 @@ export const ENQUIRIES: Enquiry[] = [
     unread: false,
     preview: "Do you offer airport pickup from Joshua Mqabuko Nkomo?",
     summary:
-      "One-night Standard stay at Sunone on 8 November with a $25 airport pickup. Pickup for FN 102 confirmed by the front desk.",
+      "One-night Standard stay at Sunone on 8 November with a $25 airport pickup. Pickup for FN 102 confirmed by staff.",
     messages: [
       {
         id: "m1",
@@ -425,7 +425,7 @@ export const ENQUIRIES: Enquiry[] = [
       {
         id: "m2",
         role: "assistant",
-        text: "Of course. The Zim Harris front desk is staffed 24 hours, and I've noted your late arrival. The gate code and directions are in your confirmation message.",
+        text: "Of course. The Zim Harris lodge is staffed 24 hours, and I've noted your late arrival. The gate code and directions are in your confirmation message.",
         time: "18:21",
       },
       {
@@ -456,7 +456,7 @@ export const ENQUIRIES: Enquiry[] = [
     unread: true,
     preview: "Do you have an Upper Standard at Park Guesthouse for 6–8 December?",
     summary:
-      "Two nights in an Upper Standard at Park Guesthouse, 6–8 December. The room is available but the rate is unconfirmed; handed to the front desk for pricing.",
+      "Two nights in an Upper Standard at Park Guesthouse, 6–8 December. The room is available but the rate is unconfirmed; handed to staff for pricing.",
     messages: [
       {
         id: "m1",
