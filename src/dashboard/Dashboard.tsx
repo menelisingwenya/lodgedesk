@@ -281,9 +281,9 @@ function DashboardShell({ user }: { user: StaffUser }) {
               onOpen={openEnquiry}
             />
           ) : view === "rooms" ? (
-            <RoomsView onNotice={notify} />
+            <RoomsView onNotice={notify} user={user} />
           ) : (
-            <BranchesView onNotice={notify} />
+            <BranchesView onNotice={notify} user={user} />
           )}
         </div>
       </main>
