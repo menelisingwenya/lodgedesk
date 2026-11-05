@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "./lib/supabase";
 
 type Msg = { role: "guest" | "assistant"; text: string };
 
@@ -13,17 +14,48 @@ const CONTACT_PLACEHOLDER = "[contact details to be added]";
 
 const STARTERS = ["Rooms and prices", "Which branch has rooms?", "Conference room"];
 
-const REPLY_DELAY_MS = 900;
+const SESSION_KEY = "lodgedesk_session";
+let memorySessionId: string | null = null;
 
-/**
- * The single place where guest messages are sent.
- * It stands in for the assistant API for now; replace the body with the real
- * request when the backend is connected — the UI only needs the reply string.
- */
-async function sendMessage(text: string): Promise<string> {
-  await new Promise((resolve) => setTimeout(resolve, REPLY_DELAY_MS));
-  const subject = text.trim().replace(/\s+/g, " ");
-  return `Thanks — I've noted "${subject}". This is a placeholder reply while LodgeDesk is being connected to the booking system; a member of our team will follow up with you shortly.`;
+function getSessionId(): string {
+  try {
+    const stored = sessionStorage.getItem(SESSION_KEY);
+    if (stored) return stored;
+  } catch {
+    // sessionStorage read unavailable
+  }
+
+  if (memorySessionId) return memorySessionId;
+
+  const newId = crypto.randomUUID();
+  memorySessionId = newId;
+
+  try {
+    sessionStorage.setItem(SESSION_KEY, newId);
+  } catch {
+    // sessionStorage write unavailable
+  }
+
+  return newId;
+}
+
+async function sendMessage(message: string): Promise<string> {
+  const sessionId = getSessionId();
+
+  const { data, error } = await supabase.functions.invoke<{
+    reply?: string;
+    conversation_id?: string;
+    handoff?: boolean;
+  }>("chat", {
+    body: { session_id: sessionId, message },
+  });
+
+  if (error || !data || typeof data.reply !== "string") {
+    console.error(error ? "FunctionsHttpError" : "ChatResponseError");
+    throw new Error("ChatError");
+  }
+
+  return data.reply;
 }
 
 export default function Chat() {
@@ -41,13 +73,15 @@ export default function Chat() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
+    const messageToSend = trimmed.slice(0, 2000);
+
     setInput("");
     setError(null);
-    setMessages((m) => [...m, { role: "guest", text: trimmed }]);
+    setMessages((m) => [...m, { role: "guest", text: messageToSend }]);
     setLoading(true);
 
     try {
-      const reply = await sendMessage(trimmed);
+      const reply = await sendMessage(messageToSend);
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
     } catch {
       setError("Please try again in a moment.");
@@ -126,6 +160,7 @@ export default function Chat() {
             }}
             placeholder="Type your question…"
             aria-label="Your message"
+            maxLength={2000}
           />
           <button type="button" onClick={() => void submit(input)} disabled={loading || !input.trim()}>
             Send
