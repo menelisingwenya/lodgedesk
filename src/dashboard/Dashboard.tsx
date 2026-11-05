@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./dashboard.css";
+import { supabase } from "../lib/supabase";
 import Sidebar, { type View } from "./Sidebar";
 import Overview, { type AskFilter } from "./Overview";
 import EnquiriesView from "./EnquiriesView";
@@ -31,6 +32,55 @@ export default function Dashboard() {
 
 function DashboardShell({ user }: { user: StaffUser }) {
   const [enquiries, setEnquiries] = useState<Enquiry[]>(ENQUIRIES);
+
+  useEffect(() => {
+    async function loadLiveEnquiries() {
+      try {
+        const { data, error } = await supabase
+          .from("enquiries")
+          .select("*")
+          .order("id", { ascending: false });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const liveData: Enquiry[] = data.map((item: any, index: number) => ({
+            id: String(item.id || `live-${index}`),
+            ref: `HL-${1060 + index}`,
+            guest: item.guest_name || "Unknown Guest",
+            initials: (item.guest_name || "UG").split(" ").map((n: string) => n || "").join("").toUpperCase().substring(0, 2),
+            channel: "Web chat" as const,
+            branch: "Zim Harris" as const, 
+            room: "Standard" as const,     
+            arrival: "05 Nov",
+            departure: "06 Nov",
+            nights: 1,
+            guests: 1,
+            rate: 65,
+            total: 65,
+            status: "new" as EnquiryStatus,
+            updated: "Just now",
+            unread: true,
+            preview: item.contact || "New live enquiry received",
+            summary: `Live record contact details: ${item.contact || "None provided"}`,
+            messages: [
+              {
+                id: `m-live-${index}`,
+                role: "guest",
+                text: `Live booking conversation record dynamically linked. Contact number: ${item.contact}`,
+                time: "16:30",
+              }
+            ]
+          }));
+          setEnquiries([...liveData, ...ENQUIRIES]);
+        }
+      } catch (err) {
+        console.error("Dashboard database fetch error:", err);
+      }
+    }
+    loadLiveEnquiries();
+  }, []);
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<AskFilter>("all");
