@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
+import.meta.env.VITE_SUPABASE_URL
+import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // Both values come from .env.local (never committed to Git).
 const url = import.meta.env.VITE_SUPABASE_URL
