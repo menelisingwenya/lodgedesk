@@ -36,45 +36,163 @@ function DashboardShell({ user }: { user: StaffUser }) {
   useEffect(() => {
     async function loadLiveEnquiries() {
       try {
+        // Fetch enquiries joined with branch and room_type names
         const { data, error } = await supabase
           .from("enquiries")
-          .select("*")
-          .order("id", { ascending: false });
+          .select(`
+            *,
+            branches ( name ),
+            room_types ( name )
+          `)
+          .order("created_at", { ascending: false });
 
         if (error) throw error;
+        if (!data || data.length === 0) return;
 
-        if (data && data.length > 0) {
+        // Collect all unique conversation IDs so we can load messages in one query
+        const convIds = [
+          ...new Set(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (data as any[])
+              .map((item) => item.conversation_id)
+              .filter(Boolean)
+          ),
+        ] as string[];
+
+        // Fetch all messages for those conversations in one round-trip
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let msgsByConv: Record<string, any[]> = {};
+        if (convIds.length > 0) {
+          const { data: msgData, error: msgError } = await supabase
+            .from("messages")
+            .select("id, conversation_id, role, content, created_at")
+            .in("conversation_id", convIds)
+            .order("created_at", { ascending: true });
+
+          if (!msgError && msgData) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            msgsByConv = (msgData as any[]).reduce((acc, msg) => {
+              const key = msg.conversation_id as string;
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(msg);
+              return acc;
+            }, {} as Record<string, any[]>);
+          }
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const liveData: Enquiry[] = (data as any[]).map((item, index) => {
+          // Resolve branch and room names from the join
+          const branchName: string =
+            item.branches?.name ?? "Harris Lodge";
+          const roomName: string =
+            item.room_types?.name ?? "Standard";
+
+          // Format dates
+          const fmtDate = (d: string | null) => {
+            if (!d) return "—";
+            const dt = new Date(d);
+            return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+          };
+          const arrival = fmtDate(item.check_in);
+          const departure = fmtDate(item.check_out);
+          const nights =
+            item.check_in && item.check_out
+              ? Math.max(
+                  1,
+                  Math.round(
+                    (new Date(item.check_out).getTime() - new Date(item.check_in).getTime()) /
+                      86_400_000
+                  )
+                )
+              : 1;
+
+          // Map status
+          const statusMap: Record<string, EnquiryStatus> = {
+            new: "new",
+            handed_off: "handoff",
+            contacted: "contacted",
+            closed: "closed",
+          };
+          const status: EnquiryStatus = statusMap[item.status] ?? "new";
+
+          // Build messages from real conversation history
+          const rawMsgs = item.conversation_id
+            ? (msgsByConv[item.conversation_id] ?? [])
+            : [];
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const liveData: Enquiry[] = data.map((item: any, index: number) => ({
-            id: String(item.id || `live-${index}`),
+          const messages: Message[] = rawMsgs.map((msg: any) => {
+            const time = new Date(msg.created_at).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            return {
+              id: String(msg.id),
+              role: (msg.role === "assistant" ? "assistant" : "guest") as Message["role"],
+              text: String(msg.content),
+              time,
+            };
+          });
+
+          // Fall back to a single placeholder if we have no conversation yet
+          if (messages.length === 0) {
+            messages.push({
+              id: `m-live-${index}`,
+              role: "guest",
+              text: item.contact
+                ? `Contact: ${item.contact}`
+                : "New enquiry received via web chat.",
+              time: new Date(item.created_at).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            });
+          }
+
+          const lastMsg = messages[messages.length - 1];
+          const preview =
+            lastMsg?.text.slice(0, 120) ?? item.contact ?? "New enquiry";
+
+          const summaryParts: string[] = [];
+          if (branchName) summaryParts.push(branchName);
+          if (roomName) summaryParts.push(roomName);
+          if (item.check_in) summaryParts.push(`Check-in ${arrival}`);
+          if (item.check_out) summaryParts.push(`Check-out ${departure}`);
+          if (item.guests) summaryParts.push(`${item.guests} guest${item.guests > 1 ? "s" : ""}`);
+          if (item.contact) summaryParts.push(`Contact: ${item.contact}`);
+          if (item.notes) summaryParts.push(item.notes);
+
+          return {
+            id: String(item.id),
             ref: `HL-${1060 + index}`,
             guest: item.guest_name || "Unknown Guest",
-            initials: (item.guest_name || "UG").split(" ").map((n: string) => n || "").join("").toUpperCase().substring(0, 2),
+            initials: (item.guest_name || "UG")
+              .split(" ")
+              .filter(Boolean)
+              .map((n: string) => n[0]?.toUpperCase() ?? "")
+              .join("")
+              .substring(0, 2),
             channel: "Web chat" as const,
-            branch: "Zim Harris" as const, 
-            room: "Standard" as const,     
-            arrival: "05 Nov",
-            departure: "06 Nov",
-            nights: 1,
-            guests: 1,
-            rate: 65,
-            total: 65,
-            status: "new" as EnquiryStatus,
+            branch: branchName as Enquiry["branch"],
+            room: roomName as Enquiry["room"],
+            arrival,
+            departure,
+            nights,
+            guests: item.guests ?? 1,
+            rate: null,
+            total: null,
+            status,
+            handoffReason: item.handoff_reason ?? undefined,
             updated: "Just now",
-            unread: true,
-            preview: item.contact || "New live enquiry received",
-            summary: `Live record contact details: ${item.contact || "None provided"}`,
-            messages: [
-              {
-                id: `m-live-${index}`,
-                role: "guest",
-                text: `Live booking conversation record dynamically linked. Contact number: ${item.contact}`,
-                time: "16:30",
-              }
-            ]
-          }));
-          setEnquiries([...liveData, ...ENQUIRIES]);
-        }
+            unread: status === "new" || status === "handoff",
+            preview,
+            summary: summaryParts.join(" · ") || "Live enquiry",
+            messages,
+          };
+        });
+
+        setEnquiries([...liveData, ...ENQUIRIES]);
       } catch (err) {
         console.error("Dashboard database fetch error:", err);
       }
@@ -347,3 +465,4 @@ function DashboardShell({ user }: { user: StaffUser }) {
     </div>
   );
 }
+
