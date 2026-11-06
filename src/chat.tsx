@@ -64,6 +64,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const hasStarted = messages.length > 1;
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
@@ -101,8 +102,53 @@ export default function Chat() {
     ]);
   }
 
+  const controls = (
+    <>
+      {error && (
+        <p className="chat-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="chat-input">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void submit(input);
+            }
+          }}
+          placeholder="Type your question…"
+          aria-label="Your message"
+          maxLength={2000}
+        />
+        <button type="button" onClick={() => void submit(input)} disabled={loading || !input.trim()}>
+          Send
+        </button>
+      </div>
+
+      <div className="chat-starters" role="group" aria-label="Suggested questions">
+        {STARTERS.map((starter) => (
+          <button
+            key={starter}
+            type="button"
+            className="chat-chip"
+            onClick={() => submit(starter)}
+            disabled={loading}
+          >
+            {starter}
+          </button>
+        ))}
+      </div>
+
+      <p className="chat-note">{COMPOSER_NOTE}</p>
+    </>
+  );
+
   return (
-    <div className="chat">
+    <div className={`chat${hasStarted ? " chat-active" : " chat-empty"}`}>
       <header className="chat-header">
         <div>
           <h1>LodgeDesk</h1>
@@ -113,62 +159,38 @@ export default function Chat() {
         </button>
       </header>
 
-      <div className="chat-messages">
-        {messages.map((m, i) => (
-          <div key={i} className={`bubble ${m.role}`}>
-            {m.text}
+      {hasStarted ? (
+        <>
+          <div className="chat-messages" aria-live="polite">
+            {messages.map((m, i) => (
+              <div key={i} className={`bubble ${m.role}`}>
+                {m.text}
+              </div>
+            ))}
+            {loading && (
+              <div className="bubble assistant typing" role="status">
+                Thinking…
+              </div>
+            )}
+            <div ref={bottom} />
           </div>
-        ))}
-        {loading && (
-          <div className="bubble assistant typing" role="status">
-            Thinking…
-          </div>
-        )}
-        <div ref={bottom} />
-      </div>
 
-      <footer className="chat-composer">
-        {error && (
-          <p className="chat-error" role="alert">
-            {error}
-          </p>
-        )}
-
-        <div className="chat-starters" role="group" aria-label="Suggested questions">
-          {STARTERS.map((starter) => (
-            <button
-              key={starter}
-              type="button"
-              className="chat-chip"
-              onClick={() => submit(starter)}
-              disabled={loading}
-            >
-              {starter}
-            </button>
-          ))}
-        </div>
-
-        <div className="chat-input">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void submit(input);
-              }
-            }}
-            placeholder="Type your question…"
-            aria-label="Your message"
-            maxLength={2000}
-          />
-          <button type="button" onClick={() => void submit(input)} disabled={loading || !input.trim()}>
-            Send
-          </button>
-        </div>
-
-        <p className="chat-note">{COMPOSER_NOTE}</p>
-      </footer>
+          <footer className="chat-composer">{controls}</footer>
+        </>
+      ) : (
+        <main className="chat-empty-state">
+          <section className="chat-hero" aria-labelledby="chat-hero-title">
+            <div className="chat-orb" aria-hidden="true">
+              <span />
+            </div>
+            <h2 id="chat-hero-title">How can I help you today?</h2>
+            <p className="chat-welcome">{GREETING}</p>
+          </section>
+          <section className="chat-composer chat-composer-empty" aria-label="Start a conversation">
+            {controls}
+          </section>
+        </main>
+      )}
     </div>
   );
 }

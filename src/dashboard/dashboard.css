@@ -139,7 +139,6 @@
   text-align: left;
   color: var(--ld-on-brand);
   background: var(--ld-brand);
-  background: linear-gradient(180deg, var(--ld-brand), var(--ld-brand-hover));
   border: 1px solid var(--ld-brand);
   border-radius: 9px;
   cursor: pointer;
@@ -391,7 +390,7 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--ld-avatar-ink);
-  background: linear-gradient(140deg, var(--ld-avatar-from), var(--ld-avatar-to));
+  background: var(--ld-avatar-to);
   border-radius: 50%;
 }
 
@@ -1774,12 +1773,12 @@
 .ld-bar > i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--ld-bar-from), var(--ld-bar-to));
+  background: var(--ld-bar-to);
   border-radius: 4px;
 }
 
 .ld-bar.cool > i {
-  background: linear-gradient(90deg, var(--ld-bar-cool-from), var(--ld-bar-cool-to));
+  background: var(--ld-bar-cool-to);
 }
 
 .ld-occupancy {
